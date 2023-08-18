@@ -156,7 +156,7 @@ namespace Scp035
         {
             Timing.CallDelayed(1.5f, () =>
             {
-                player.ChangeAppearance(VisibleRole);
+                player.ChangeAppearance(VisibleRole, false);
                 if (MovementMultiplier > 0)
                 {
                     StatusEffectBase? movement = player.GetEffect(EffectType.MovementBoost);
@@ -240,8 +240,8 @@ namespace Scp035
             for (;;)
             {
                 yield return Timing.WaitForSeconds(20f);
-                player.ChangeAppearance(VisibleRole);
-                player.CustomInfo = $"<color=red>{player.Nickname}\nSCP-035</color>";
+                player.ChangeAppearance(VisibleRole, false);
+                player.CustomInfo = $"<color=#C50000>{player.Nickname}\nSCP-035</color>";
                 player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Nickname;
                 player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Role;
                 player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.PowerStatus;

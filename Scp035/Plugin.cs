@@ -28,7 +28,7 @@ namespace Scp035
         public override string Prefix { get; } = "Scp035";
 
         /// <inheritdoc />
-        public override Version RequiredExiledVersion { get; } = new(6, 0, 0);
+        public override Version RequiredExiledVersion { get; } = new(7, 2, 0);
 
         /// <summary>
         /// Gets the reference to this plugin's Event Handler class.
@@ -62,7 +62,7 @@ namespace Scp035
         {
             _harmony.UnpatchAll(_harmonyId);
             CustomItem.UnregisterItems();
-            CustomRole.RegisterRoles();
+            CustomRole.UnregisterRoles();
 
             Exiled.Events.Handlers.Server.EndingRound -= EventHandlers.OnEndingRound;
             Exiled.Events.Handlers.Player.SpawningRagdoll -= EventHandlers.OnSpawningRagdoll;

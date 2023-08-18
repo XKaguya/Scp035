@@ -14,7 +14,7 @@ namespace Scp035
         /// Gets or sets a value indicating whether debug messages will be shown.
         /// </summary>
         [Description("Whether or not to display debug messages in the server console.")]
-        public bool Debug { get; set; }
+        public bool Debug { get; set; } = false;
 
         /// <summary>
         /// Item configs for 035.
