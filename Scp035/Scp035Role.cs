@@ -9,13 +9,18 @@ namespace Scp035
     using Exiled.API.Features.Attributes;
     using Exiled.API.Features.Items;
     using Exiled.API.Features.Pickups;
+    using Exiled.API.Features.Roles;
     using Exiled.API.Features.Spawn;
     using Exiled.CustomItems.API.Features;
     using Exiled.CustomRoles.API.Features;
+    using Exiled.Events;
     using Exiled.Events.EventArgs.Player;
+    using Exiled.Events.EventArgs.Scp096;
     using MEC;
     using PlayerRoles;
+    using PlayerRoles.RoleHelp;
     using PlayerStatsSystem;
+    using PluginAPI.Roles;
     using UnityEngine;
     using VoiceChat;
     using YamlDotNet.Serialization;
@@ -34,6 +39,10 @@ namespace Scp035
         /// Gets or sets the role that is visible to players on the server aside from the player playing this role.
         /// </summary>
         public RoleTypeId VisibleRole { get; set; } = RoleTypeId.Scp049;
+        public RoleTypeId VisibleRole_ClassD { get; set; } = RoleTypeId.ClassD;
+        public RoleTypeId VisibleRole_Scientist { get; set; } = RoleTypeId.Scientist;
+
+        public RoleTypeId VisibleRole_FacilityGuard { get; set; } = RoleTypeId.FacilityGuard;
 
         /// <inheritdoc />
         public override int MaxHealth { get; set; } = 500;
@@ -46,7 +55,7 @@ namespace Scp035
             "An SCP who slowly corrodes over time, but is able to use items normally.";
 
         /// <inheritdoc />
-        public override string CustomInfo { get; set; } = "SCP-035";
+        public override string CustomInfo { get; set; } = "D级人员";
 
         /// <inheritdoc />
         public override bool KeepInventoryOnSpawn { get; set; } = true;
@@ -75,7 +84,7 @@ namespace Scp035
         /// <summary>
         /// Gets or sets the custom scale factor for players when they are this role.
         /// </summary>
-        public override Vector3 Scale { get; set; } = new(1.25f, 0.75f, 1f);
+        public override Vector3 Scale { get; set; } = new(1f, 1f, 1f);
 
         // The following properties are only defined so that we can add the YamlIgnore attribute to them so they cannot be changed via configs.
         /// <inheritdoc />
@@ -92,12 +101,37 @@ namespace Scp035
 
         /// <inheritdoc />
         /// Hacky override to bypass bug in Exiled.CustomRoles
+
+        int RoleVar;
         public override void AddRole(Player player)
         {
+            // Test
+            if (player.Role.Type == RoleTypeId.FacilityGuard)
+            {
+                RoleVar = 1;
+                Log.Info("Pre-Role: FacilityGuard");
+                Log.Info("RoleVar:" + RoleVar);
+            }
+
+            else if (player.Role.Type == RoleTypeId.Scientist)
+            {
+                RoleVar = 2;
+                Log.Info("Pre-Role: Scientist");
+                Log.Info("RoleVar:" + RoleVar);
+            }
+
+            else if (player.Role.Type == RoleTypeId.ClassD)
+            {
+                RoleVar = 3;
+                Log.Info("Pre-Role: ClassD");
+                Log.Info("RoleVar:" + RoleVar);
+            }
+
             Vector3 oldPos = player.Position;
             Log.Debug(this.Name + ": Adding role to " + player.Nickname + ".");
             if (this.Role != RoleTypeId.None)
                 player.Role.Set(this.Role, RoleSpawnFlags.None);
+
             Timing.CallDelayed(1.5f, (System.Action)(() =>
             {
                 Vector3 spawnPosition = this.GetSpawnPosition();
@@ -135,7 +169,14 @@ namespace Scp035
                 player.Scale = this.Scale;
             }));
             Log.Debug(this.Name + ": Setting player info");
+
+
+
+            //player.CustomInfo = this.CustomInfo;
             player.CustomInfo = this.CustomInfo;
+            Log.Info("CustomInfo:" + this.CustomInfo);
+
+
             player.InfoArea &= ~PlayerInfoArea.Role;
             if (this.CustomAbilities != null)
             {
@@ -156,7 +197,15 @@ namespace Scp035
         {
             Timing.CallDelayed(1.5f, () =>
             {
-                player.ChangeAppearance(VisibleRole, false);
+                // Test
+                if (RoleVar == 1)
+                    player.ChangeAppearance(VisibleRole_FacilityGuard, true);
+                else if (RoleVar == 2)
+                    player.ChangeAppearance(VisibleRole_Scientist, true);
+                else if (RoleVar == 3)
+                    player.ChangeAppearance(VisibleRole_ClassD, true);
+
+
                 if (MovementMultiplier > 0)
                 {
                     StatusEffectBase? movement = player.GetEffect(EffectType.MovementBoost);
@@ -167,8 +216,14 @@ namespace Scp035
             });
 
             player.Scale = Scale;
+            Log.Info("Before SCP-035 Voice Channel:" + player.VoiceChannel);
             player.VoiceChannel = VoiceChatChannel.ScpChat;
-            
+            Log.Info("After SCP-035 Voice Channel:" + player.VoiceChannel);
+
+            Log.Info("Role:" + player.Role.Type);
+
+            // Get player current role
+
             foreach (Item item in player.Items.ToList())
                 if (CustomItem.TryGet(item, out CustomItem customItem))
                 {
@@ -178,6 +233,7 @@ namespace Scp035
 
             Timing.RunCoroutine(Appearance(player), $"{player.UserId}-appearance");
             Timing.RunCoroutine(Corrosion(player), $"{player.UserId}-corrosion");
+            Timing.RunCoroutine(Heal(player), $"{player.UserId}-heal per tick");
 
             base.RoleAdded(player);
         }
@@ -237,15 +293,41 @@ namespace Scp035
 
         private IEnumerator<float> Appearance(Player player)
         {
-            for (;;)
+            for (; ; )
             {
                 yield return Timing.WaitForSeconds(20f);
-                player.ChangeAppearance(VisibleRole, false);
-                player.CustomInfo = $"<color=#C50000>{player.Nickname}\nSCP-035</color>";
-                player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Nickname;
-                player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Role;
-                player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.PowerStatus;
-                player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.UnitName;
+
+                if (RoleVar == 1)
+                {
+                    player.ChangeAppearance(VisibleRole_FacilityGuard, true);
+                    player.CustomInfo = $"<color=#A0A0A0>{player.Nickname}\n设施警卫</color>";
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Nickname;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Role;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.PowerStatus;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.UnitName;
+                }
+
+
+                else if (RoleVar == 2)
+                {
+                    player.ChangeAppearance(VisibleRole_Scientist, true);
+                    player.CustomInfo = $"<color=#FAFF86>{player.Nickname}\n科学家</color>";
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Nickname;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Role;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.PowerStatus;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.UnitName;
+                }
+
+
+                else if (RoleVar == 3)
+                {
+                    player.ChangeAppearance(VisibleRole_ClassD, true);
+                    player.CustomInfo = $"<color=#FF9966>{player.Nickname}\nD级人员</color>";
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Nickname;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.Role;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.PowerStatus;
+                    player.ReferenceHub.nicknameSync.ShownPlayerInfo &= ~PlayerInfoArea.UnitName;
+                }
             }
         }
 
@@ -255,6 +337,15 @@ namespace Scp035
             {
                 yield return Timing.WaitForSeconds(1f);
                 player.Hurt(new UniversalDamageHandler(DamagePerTick, DeathTranslations.Poisoned));
+            }
+        }
+
+        private IEnumerator<float> Heal(Player player)
+        {
+            for (;;)
+            {
+                yield return Timing.WaitForSeconds(3f);
+                player.Heal(10);
             }
         }
     }
