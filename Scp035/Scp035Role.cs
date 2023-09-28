@@ -1,12 +1,19 @@
+using System.Collections.Generic;
+using System;
+using Exiled.Events.EventArgs.Player;
+
 namespace Scp035
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using CustomPlayerEffects;
     using Exiled.API.Enums;
     using Exiled.API.Extensions;
     using Exiled.API.Features;
     using Exiled.API.Features.Attributes;
+    using Exiled.API.Features.Doors;
     using Exiled.API.Features.Items;
     using Exiled.API.Features.Pickups;
     using Exiled.API.Features.Roles;
@@ -24,7 +31,9 @@ namespace Scp035
     using UnityEngine;
     using VoiceChat;
     using YamlDotNet.Serialization;
+    using static Scp035.EventHandlers;
     using RoleTypeId = PlayerRoles.RoleTypeId;
+
 
     /// <summary>
     /// The <see cref="CustomRole"/> handler for SCP-035.
@@ -41,7 +50,6 @@ namespace Scp035
         public RoleTypeId VisibleRole { get; set; } = RoleTypeId.Scp049;
         public RoleTypeId VisibleRole_ClassD { get; set; } = RoleTypeId.ClassD;
         public RoleTypeId VisibleRole_Scientist { get; set; } = RoleTypeId.Scientist;
-
         public RoleTypeId VisibleRole_FacilityGuard { get; set; } = RoleTypeId.FacilityGuard;
 
         /// <inheritdoc />
@@ -59,7 +67,7 @@ namespace Scp035
 
         /// <inheritdoc />
         public override bool KeepInventoryOnSpawn { get; set; } = true;
-        
+
         /// <summary>
         /// Gets or sets a multiplier used to modify the player's movement speed (running and walking).
         /// </summary>
@@ -99,10 +107,11 @@ namespace Scp035
         [YamlIgnore]
         public override SpawnProperties SpawnProperties { get; set; } = null;
 
+
         /// <inheritdoc />
         /// Hacky override to bypass bug in Exiled.CustomRoles
 
-        int RoleVar;
+        public int RoleVar;
         public override void AddRole(Player player)
         {
             // Test
@@ -232,8 +241,8 @@ namespace Scp035
                 }
 
             Timing.RunCoroutine(Appearance(player), $"{player.UserId}-appearance");
-            Timing.RunCoroutine(Corrosion(player), $"{player.UserId}-corrosion");
-            Timing.RunCoroutine(Heal(player), $"{player.UserId}-heal per tick");
+            //Timing.RunCoroutine(Corrosion(player), $"{player.UserId}-corrosion");
+            //Timing.RunCoroutine(Heal(player), $"{player.UserId}-heal per tick");
 
             base.RoleAdded(player);
         }
@@ -247,6 +256,7 @@ namespace Scp035
             Scp035Item.ChangedPlayers.Remove(player);
 
             base.RoleRemoved(player);
+            RoleVar = 0;
         }
 
         /// <inheritdoc />
@@ -266,24 +276,29 @@ namespace Scp035
             Exiled.Events.Handlers.Player.PickingUpItem -= OnPickingUpItem;
             base.UnsubscribeEvents();
         }
-        
+
         private void OnDying(DyingEventArgs ev)
         {
             if (Check(ev.Player))
                 Plugin.Instance.StopRagdollsList.Add(ev.Player);
         }
-        
+
         private void OnHurting(HurtingEventArgs ev)
         {
             if (ev.Attacker != null && Check(ev.Attacker) && ev.Player.Role.Side == Side.Scp)
                 ev.IsAllowed = Server.FriendlyFire || ev.Attacker.IsFriendlyFireEnabled;
+            if (ev.Attacker != null && ev.Player.Role.Type == RoleTypeId.Tutorial && ev.Attacker.IsScp == true)
+                ev.IsAllowed = Server.FriendlyFire || ev.Attacker.IsFriendlyFireEnabled;
+
         }
-        
+
         private void OnPickingUpItem(PickingUpItemEventArgs ev)
         {
             if (Check(ev.Player) && CheckItem(ev.Pickup))
                 ev.IsAllowed = false;
         }
+
+
 
         private bool CheckItem(Pickup pickup)
         {
@@ -333,20 +348,38 @@ namespace Scp035
 
         private IEnumerator<float> Corrosion(Player player)
         {
-            for (;;)
+            for (; ; )
             {
                 yield return Timing.WaitForSeconds(1f);
                 player.Hurt(new UniversalDamageHandler(DamagePerTick, DeathTranslations.Poisoned));
             }
         }
 
-        private IEnumerator<float> Heal(Player player)
+        public int PlayerRoleVar
         {
-            for (;;)
-            {
-                yield return Timing.WaitForSeconds(3f);
-                player.Heal(10);
-            }
+            get { return RoleVar; }
+            set { RoleVar = value; }
         }
+
+/**        private IEnumerator<float> Heal(Player player)
+        {
+            for (; ; )
+            {
+                if (player != null && manager.PlayersHurt.Contains(player))
+                {
+                    if (RoleVar == 1 || RoleVar == 2 || RoleVar == 3)
+                    {
+                        yield return Timing.WaitForSeconds(3f);
+                        player.Heal(10);
+                        Log.Info($"{player} Healed");
+                    }
+                }
+                else
+                {
+                    yield return 0;
+                }
+            }
+        } **/
     }
 }
+

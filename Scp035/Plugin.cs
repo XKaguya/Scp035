@@ -8,7 +8,9 @@ namespace Scp035
     using Exiled.CustomItems.API.Features;
     using Exiled.CustomRoles.API;
     using Exiled.CustomRoles.API.Features;
+    using GameCore;
     using HarmonyLib;
+
 
     /// <inheritdoc />
     public class Plugin : Plugin<Config>
@@ -28,7 +30,6 @@ namespace Scp035
         public override string Prefix { get; } = "Scp035";
 
         /// <inheritdoc />
-        public override Version RequiredExiledVersion { get; } = new(7, 2, 0);
 
         /// <summary>
         /// Gets the reference to this plugin's Event Handler class.
@@ -44,14 +45,16 @@ namespace Scp035
         {
             Instance = this;
             EventHandlers = new EventHandlers(this);
+            Exiled.Events.Handlers.Player.Hurting += EventHandlers.OnHurt_Heal;
+            //Exiled.Events.Handlers.Player.Hurting += EventHandlers.OnHurting_FF;
             Exiled.Events.Handlers.Server.EndingRound += EventHandlers.OnEndingRound;
             Exiled.Events.Handlers.Player.SpawningRagdoll += EventHandlers.OnSpawningRagdoll;
 
             _harmonyId = $"com.joker.035-{DateTime.Now.Ticks}";
             _harmony = new Harmony(_harmonyId);
-            Log.Debug($"{nameof(OnEnabled)}: Patching..");
+            Exiled.API.Features.Log.Debug($"{nameof(OnEnabled)}: Patching..");
             _harmony.PatchAll();
-            Log.Debug($"{nameof(OnEnabled)}: Registering item & role..");
+            Exiled.API.Features.Log.Debug($"{nameof(OnEnabled)}: Registering item & role..");
             Config.Scp035ItemConfig.Register();
             Config.Scp035RoleConfig.Register();
             base.OnEnabled();
@@ -64,6 +67,8 @@ namespace Scp035
             CustomItem.UnregisterItems();
             CustomRole.UnregisterRoles();
 
+            Exiled.Events.Handlers.Player.Hurting -= EventHandlers.OnHurt_Heal;
+            //Exiled.Events.Handlers.Player.Hurting -= EventHandlers.OnHurting_FF; 
             Exiled.Events.Handlers.Server.EndingRound -= EventHandlers.OnEndingRound;
             Exiled.Events.Handlers.Player.SpawningRagdoll -= EventHandlers.OnSpawningRagdoll;
             EventHandlers = null;
